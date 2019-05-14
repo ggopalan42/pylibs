@@ -6,7 +6,8 @@
 import os
 import random
 
-from . import preprocessing_exceptions
+# from . import preprocessing_exceptions
+from pylibs.ml.preprocessing import preprocessing_exceptions
 
 # ML related imports
 from sklearn.model_selection import train_test_split
@@ -14,7 +15,7 @@ from sklearn.model_selection import train_test_split
 # Constants
 SK_SPLIT_DEF_PARAMS = {'test_size': 0.2, 'random_state': 42, 'shuffle': True}
 def split_train_val(data_X, data_y, split_using='sklearn',
-                    params=SK_SPLIT_DEF_PARAMS):
+                    params={}):
     ''' Split the provided labelled data to train and validation data
 
     Args:
@@ -24,24 +25,29 @@ def split_train_val(data_X, data_y, split_using='sklearn',
                      Currently supported method are:
                          - sklearn: Use standard sci-kit learn's
                                     train_test_split
-        params: Parametes for the chosen split method provided as a dict
+        params: Parametes for the chosen split method provided as a dict.
+                This dick will be updates to the values of SK_SPLIT_DEF_PARAMS
+                so some decent defaults can be used (or overridden)
     Returns:
         Tuple of (train_X, val_X, train_y, val_y): The return parameters are
                                                    self explanatory
     '''
     if split_using == 'sklearn':
-        test_size = params['test_size']
-        random_state = params['random_state']
-        shuffle = params['shuffle']
-        return train_test_split(data_X, data_y,
-                                test_size=test_size, random_state=random_state,
-                                shuffle=shuffle)
+        # test_size = params['test_size']
+        # random_state = params['random_state']
+        # shuffle = params['shuffle']
+        tmp_dict = SK_SPLIT_DEF_PARAMS
+        tmp_dict.update(params)
+
+        return train_test_split(data_X, data_y, **tmp_dict)
     else:
         msg = f'Unsupported split method: {split_using}'
         raise preprocessing_exceptions.MLPRE_SplitMethodNotImplemented(msg)
 
 
 if __name__ == '__main__':
+    from . import preprocessing_exceptions
+
     # This is purely for testing purposes. Not unit testing, mind you
     data_X = random.sample(range(1,10), 9)
     data_y = random.sample(range(1,10), 9)

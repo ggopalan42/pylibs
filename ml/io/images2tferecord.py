@@ -51,7 +51,6 @@ contains the following fields:
 
 '''
 
-from datetime import datetime
 import os
 import random
 import sys
@@ -60,6 +59,16 @@ from attrdict import AttrDict
 
 import numpy as np
 import tensorflow as tf
+
+from datetime import datetime
+from pathlib import Path
+
+# Local imports
+from pylibs.ml.preprocessing.train_val_utils import split_train_val
+
+# this down here is not good. But trying to move fwd fast . . .
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 '''
 Need to define:
@@ -192,7 +201,7 @@ def _process_image(filename, coder):
 
 
 def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
-                               texts, labels, num_shards):
+                               texts, labels, num_shards, output_directory):
     """Processes and saves list of images as TFRecord in 1 thread.
 
     Args:
@@ -206,6 +215,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
         texts: list of strings; each string is human readable, e.g. 'dog'
         labels: list of integer; each integer identifies the ground truth
         num_shards: integer number of shards for this data set.
+        output_directory: Directory where TFE records are stored
     """
     # Each thread produces N shards where N = int(num_shards / num_threads).
     # For instance, if num_shards = 128, and the num_threads = 2, then the first
@@ -225,7 +235,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
         #    e.g. 'train-00002-of-00010'
         shard = thread_index * num_shards_per_batch + s
         output_filename = '%s-%.5d-of-%.5d' % (name, shard, num_shards)
-        output_file = os.path.join(FLAGS.output_directory, output_filename)
+        output_file = os.path.join(output_directory, output_filename)
         writer = tf.python_io.TFRecordWriter(output_file)
 
         shard_counter = 0
@@ -264,7 +274,8 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
     sys.stdout.flush()
 
 
-def _process_image_files(name, filenames, texts, labels, num_shards):
+def process_image_files(name, filenames, texts, labels, num_shards,
+                        num_threads, output_directory):
     """Process and save list of images as TFRecord of Example protos.
 
     Args:
@@ -279,13 +290,13 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
 
     # Break all images into batches with a [ranges[i][0], ranges[i][1]].
     spacing = np.linspace(0, len(filenames),
-                          FLAGS.num_threads + 1).astype(np.int)
+                          num_threads + 1).astype(np.int)
     ranges = []
     for i in range(len(spacing) - 1):
         ranges.append([spacing[i], spacing[i + 1]])
 
     # Launch a thread for each batch.
-    print('Launching %d threads for spacings: %s' % (FLAGS.num_threads, ranges))
+    print('Launching %d threads for spacings: %s' % (num_threads, ranges))
     sys.stdout.flush()
 
     # Create a mechanism for monitoring when all threads are finished.
@@ -297,7 +308,7 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
     threads = []
     for thread_index in range(len(ranges)):
         args = (coder, thread_index, ranges, name, filenames,
-                texts, labels, num_shards)
+                texts, labels, num_shards, output_directory)
         t = threading.Thread(target=_process_image_files_batch, args=args)
         t.start()
         threads.append(t)
@@ -311,6 +322,7 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
 
 def local_tests():
     # This is purely for testing purposes. Not unit testing, mind you
+    BASE_DIR = Path('/data/data1/datasets/kaggle/iWildCam_2019/')
     '''
     - train_dir
     - val_dir
@@ -321,10 +333,16 @@ def local_tests():
     - labels_dict: eg: {0: 'background', 1: 'dog'}
     '''
 
-    params = AttrDict()
-    params.train_dir = 'a'
-    print(params)
+    args = AttrDict()
 
+    args.train_dir = BASE_DIR/'train_images'
+    args.val_dir = None
+    args.train_shards = None
+    args.val_shards = None
+    args.num_threads = 2
+    args.labels_dict = {}
+
+    _process_image_files(args, 'train', filenames, texts, labels, num_shards)
 
 if __name__ == '__main__':
     # This is purely for testing purposes. Not unit testing, mind you

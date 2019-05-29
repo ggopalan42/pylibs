@@ -18,7 +18,7 @@ GG Notes:
     1. This model is pretty much a copy from tf-source located at:
            https://github.com/tensorflow/models/tree/master/official/resnet
     2. Versioning: The various versions referred to in the model filename are:
-         tfv1_ = tensorflow v1 based
+         tfv2_ = tensorflow v2 based
          _v1: (at the end of filename) version1 of my implementation
 
 

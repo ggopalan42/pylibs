@@ -15,12 +15,12 @@
 """Contains definitions for Residual Networks.
 
 GG Notes:
-    1. This model is pretty much a copy from tf-source located at: 
+    1. This model is pretty much a copy from tf-source located at:
            https://github.com/tensorflow/models/tree/master/official/resnet
     2. Versioning: The various versions referred to in the model filename are:
          tfv1_ = tensorflow v1 based
-         _v1: (at the end of filename) version1 of my implementation 
-       
+         _v1: (at the end of filename) version1 of my implementation
+
 
 Residual networks ('v1' ResNets) were originally proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
@@ -53,13 +53,13 @@ ALLOWED_TYPES = (DEFAULT_DTYPE,) + CASTABLE_TYPES
 # Convenience functions for building the ResNet model.
 ################################################################################
 def batch_norm(inputs, training, data_format):
-  """Performs a batch normalization using a standard set of parameters."""
-  # We set fused=True for a significant performance boost. See
-  # https://www.tensorflow.org/performance/performance_guide#common_fused_ops
-  return tf.compat.v1.layers.batch_normalization(
-      inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
-      momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
-      scale=True, training=training, fused=True)
+    """Performs a batch normalization using a standard set of parameters."""
+    # We set fused=True for a significant performance boost. See
+    # https://www.tensorflow.org/performance/performance_guide#common_fused_ops
+    return tf.compat.v1.layers.batch_normalization(
+        inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
+        momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
+        scale=True, training=training, fused=True)
 
 
 def fixed_padding(inputs, kernel_size, data_format):

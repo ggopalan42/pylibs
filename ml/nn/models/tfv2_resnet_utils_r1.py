@@ -23,7 +23,7 @@ GG Notes:
            https://github.com/tensorflow/models/blob/master/official/resnet/resnet_run_loop.py
     2. Versioning: The various versions referred to in the model filename are:
          tfv2_ = tensorflow v2 based
-         _v1: (at the end of filename) version1 of my implementation 
+         _r1: (at the end of filename) Revision 1 of my implementation 
        
 """
 

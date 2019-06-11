@@ -6,8 +6,8 @@ import pdb
 from collections import defaultdict
 
 # Local imports
-from . import aws_settings
-from . import aws_exceptions
+from pylibs.cloud.aws.config import aws_settings
+from pylibs.cloud.aws.config import aws_exceptions
 
 
 class ec2_SingleInstance():

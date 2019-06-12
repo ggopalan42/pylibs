@@ -11,6 +11,7 @@ AWS_SECURITY_GROUPS = {
     'neutrino': 'sg-05811705b74edb37e',
     'default': 'sg-8c12d0fe',
 }
+
 AWS_REGIONS = {
     "us-east-1": "US East (N. Virginia)",
     "us-east-2": "US East (Ohio)",

@@ -71,6 +71,8 @@ class aws_iot_thing():
         return resp
 
 
+
+
 class aws_iot_all_things():
     ''' This object holds the data for all AWS IoT things
         AWS IoT thing '''
@@ -123,6 +125,115 @@ class aws_iot_all_things():
         del self.iot_things_objs[thing_name]
         return resp
 
+
+    def list_all_things(self):
+        ''' Get and return a list of AWS IoT things
+
+          Arguments: None
+
+          Returns:
+              - A list of thing names
+              - The full API call response 
+        '''
+        # Create a connection
+        client = boto3.client('iot')
+        # Get the full response to list things
+        # Get the list of thing types
+        response_full = client.list_things()
+
+        # Extract just the thing names
+        # The response is a dict that has two keys: 
+        # 'ResponseMetadata' and 'things'. And 'things' is a list
+        # of dicts with key 'thingName' which is where we get all
+        # of the thing names
+        thing_names = []
+        for thing in response_full['things']:
+            thing_names.append(thing['thingName'])
+        return thing_names, response_full
+
+
+class aws_iot_thing_type():
+    ''' This object holds all data and methods that represent
+        an AWS IoT thing type '''
+    def __init__(self):
+        # Init connection to AWS
+        self.iot_client = boto3.client('iot')
+
+    def create_thing_type(self, thing_type_name, properties={}, tags=[]):
+        ''' Method for creating iot thing type 
+
+          Arguments:
+            thing_type_name: name of the type to be created
+            properties: dict of properties to be set. 
+                        Things like description and searchable string
+            tags: List of tage for this thing type
+        '''
+
+        # Create thing type
+        response = self.iot_client.create_thing_type(thingTypeName=
+                                                     thing_type_name,
+                                     thingTypeProperties=properties, tags=tags)
+        return response
+
+
+    def deprecate_thing_type(self, thing_type_name):
+        ''' Method for deprecating iot thing type 
+
+          Arguments:
+            thing_type_name: name of the type to be deprecated
+        '''
+        # Deprecate the thing
+        response = self.iot_client.deprecate_thing_type(thingTypeName=
+                                                        thing_type_name,
+                                                        undoDeprecate=False)
+        return response
+
+
+    def delete_thing_type(self, thing_type_name):
+        ''' Method for deleting iot thing type 
+
+          Arguments:
+            thing_type_name: name of the type to be deleted
+        '''
+        # Delete the thing type
+        response = self.iot_client.delete_thing_type(thingTypeName=
+                                                     thing_type_name)
+        return response
+
+
+    def list_all_thing_types(self):
+        ''' Method for listing all thing types
+
+          Arguments: None
+        '''
+        # Get the list of thing types
+        response_full = self.iot_client.list_thing_types()
+
+        # Extract just the thing type names
+        # The response is a dict that has two keys: 
+        # 'ResponseMetadata' and 'thingTypes'. And 'thingTypes' is a list
+        # of dicts with key 'thingTypeName' which is where we get all
+        # of the thing type names
+        tt_names = []
+        for tt in response_full['thingTypes']:
+            tt_names.append(tt['thingTypeName'])
+        return tt_names, response_full
+
+
+    def get_thing_type_properties(self, thing_type_name):
+        ''' Get all of the associated data for 'thing_type_name'
+
+          Arguments:
+              thing_type_name: The name of the thing type for which data
+                               is needed
+        '''
+        # get the data for the specified thing_type_name and return the
+        # response as is
+        response = self.iot_client.list_thing_types(thingTypeName=
+                                                    thing_type_name)
+        return response['thingTypes']
+
+
 def pickle_save(all_things_obj, filename=PICKLE_STORE_NAME):
     ''' Pickle the all things obj '''
     with open(filename, 'wb') as fh:
@@ -136,48 +247,6 @@ def pickle_load(filename=PICKLE_STORE_NAME):
     return all_things_obj
 
 
-def create_thing_type(thing_type_name, properties={}, tags=[]):
-    ''' Generic function for creating iot thing type 
-
-      Arguments:
-        thing_type_name: name of the type to be created
-        properties: dict of properties to be set. Things like description and
-                    searchable string
-        tags: List of tage for this thing type
-    '''
-
-    # Create boto3 connection
-    iot_client = boto3.client('iot')
-    response = iot_client.create_thing_type(thingTypeName=thing_type_name,
-                                 thingTypeProperties=properties, tags=tags)
-    return response
-
-def deprecate_thing_type(thing_type_name):
-    ''' Generic function for deprecating iot thing type 
-
-      Arguments:
-        thing_type_name: name of the type to be deprecated
-    '''
-
-    # Create boto3 connection
-    iot_client = boto3.client('iot')
-    response = iot_client.deprecate_thing_type(thingTypeName=thing_type_name,
-                                               undoDeprecate=False)
-    return response
-
-def delete_thing_type(thing_type_name):
-    ''' Generic function for deleting iot thing type 
-
-      Arguments:
-        thing_type_name: name of the type to be deleted
-    '''
-
-    # Create boto3 connection
-    iot_client = boto3.client('iot')
-    response = iot_client.delete_thing_type(thingTypeName=thing_type_name)
-    return response
-
-
 
 # For some local testing and development
 if __name__ == '__main__':
@@ -186,6 +255,7 @@ if __name__ == '__main__':
         arg1 = sys.argv[1]
     test_thing_type_name = 'cam_type'
     iot_all_things = aws_iot_all_things()
+    aws_thing_type = aws_iot_thing_type()
 
     '''
     test_thing_name = 'gg_test_thing_01'
@@ -205,6 +275,9 @@ if __name__ == '__main__':
     print(iot_all_things.iot_things_objs)
     '''
 
+    resp, _ = iot_all_things.list_all_things()
+    print(resp)
+
     
     ##### Temp stuff below to create some default types and test it too
     '''
@@ -220,19 +293,29 @@ if __name__ == '__main__':
              'Key': 'type', 'Value': 'camera'
            },
        ]
-    resp = create_thing_type('cam_type', properties=properties, tags=tags)
+    resp = aws_thing_type.create_thing_type('cam_type', 
+                                      properties=properties, tags=tags)
     print(resp)
     ###### test create_thing_type #############
-    # resp = create_thing_type('test_type')
+    # resp = aws_thing_type.create_thing_type('test_type')
     # print(resp)
 
     ###### test delete_thing_type #############
     # First deprecate
-    # resp = deprecate_thing_type('test_type')
+    # resp = aws_thing_type.deprecate_thing_type('test_type')
     # print(resp)
     
     # Then delete
     # Need to wait 5 min after deprecate then delete
-    # resp = delete_thing_type('test_type')
+    # resp = aws_thing_type.delete_thing_type('test_type')
     # print(resp)
     '''
+
+    '''
+    resp, _ = aws_thing_type.list_all_thing_types()
+    print(resp)
+    for r in resp:
+        rv = aws_thing_type.get_thing_type_properties(r)
+        print(rv)
+    '''
+

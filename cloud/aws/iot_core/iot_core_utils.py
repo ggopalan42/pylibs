@@ -264,6 +264,7 @@ if __name__ == '__main__':
     iot_all_things = aws_iot_all_things()
     aws_thing_type = aws_iot_thing_type()
 
+    ##### Temp stuff below to test thing creation/deletion
     '''
     test_thing_name = 'gg_test_thing_01'
     resp = iot_all_things.create_thing(test_thing_name, test_thing_type_name)
@@ -280,13 +281,13 @@ if __name__ == '__main__':
 
     print(iot_all_things.iot_things_list)
     print(iot_all_things.iot_things_objs)
-    '''
 
     resp, _ = iot_all_things.list_all_things()
     print(resp)
+    '''
 
     
-    ##### Temp stuff below to create some default types and test it too
+    ##### Temp stuff below to test thing types
     '''
     # Create cam type
     properties = {

@@ -6,8 +6,8 @@ import pdb
 from collections import defaultdict
 
 # Local imports
-from . import aws_settings
-from . import aws_exceptions
+from pylibs.cloud.aws.config import aws_settings
+from pylibs.cloud.aws.config import aws_exceptions
 
 
 class ec2_SingleInstance():
@@ -55,7 +55,6 @@ class ec2_SingleInstance():
         # Fianlise all parameters needed to launch instance
         self.ec2_launch_params = self.ec2_params
         self.ec2_launch_params.update(launch_dict)
-        print(self.ec2_launch_params)
 
         # Start a session
         self.ec2_response = self.ec2_session.run_instances(**self.ec2_launch_params)

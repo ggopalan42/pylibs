@@ -5,10 +5,10 @@ import boto3
 import logging
 
 from collections import namedtuple
-from botocore.exceptions import ClientError
 
 # Local imports
 from pylibs.cloud.aws.config import aws_settings
+from pylibs.cloud.aws.config import aws_error_codes
 from pylibs.cloud.aws.config import aws_exceptions
 from pylibs.cloud.aws.common import aws_common_utils
 
@@ -35,22 +35,27 @@ def create_role(role_name, trust_policy, path='/', description='',
            - Index 1 or full_response: The full response 
                                        (minus the response meta data)
     ''' 
-    # Create a named tuple
-    resp_tuple = namedtuple('role_arn', 'full_response')
-
     # Connect to IAM
     iam_client=boto3.client('iam')
 
     # Create role
-    resp = iam_client.create_role(
-               RoleName = role_name,
-               AssumeRolePolicyDocument = trust_policy,
-               Path = path,
-               Description = description,
-               MaxSessionDuration = max_session_duration if     \
-                                    max_session_duration else None,
-               Tags = tags 
-           )
+    try:
+        resp = iam_client.create_role(
+                   RoleName = role_name,
+                   AssumeRolePolicyDocument = trust_policy,
+                   Path = path,
+                   Description = description,
+                   MaxSessionDuration = max_session_duration if     \
+                                        max_session_duration else None,
+                   Tags = tags 
+               )
+    except iam_client.exceptions.EntityAlreadyExistsException:
+        logging.error(f'IAM: Create Role: {role_name} already exists')
+        # Construct response
+        err_code = aws_error_codes.AWS_IAM_ROLE_ALREADY_EXISTS
+        resp = aws_error_codes.construct_response(err_code) 
+        return False, resp
+                   
 
     # Check response
     sbool, scode = aws_common_utils.check_response_status(resp)
@@ -59,7 +64,7 @@ def create_role(role_name, trust_policy, path='/', description='',
                      f'{scode}')
         raise aws_exceptions.AWS_API_CallFailed
 
-    return resp_tuple(esp['Role']['Arn'], resp)
+    return resp['Role']['Arn'], resp
 
 
 def list_roles(path_prefix='/'):
@@ -101,6 +106,39 @@ def list_roles(path_prefix='/'):
 
     return roles_list, roles_dict, resp
 
+
+def delete_role(role_name):
+    ''' Delete Role
+
+        Arguments:
+            - role_name: Role name to be deleted
+
+        Returns:
+            - resp: Full response (minus metadata)
+    '''
+
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    try:
+        resp = iam_client.delete_role(RoleName = role_name)
+    except iam_client.exceptions.NoSuchEntityException:
+        logging.error(f'IAM: Delete Role: {role_name} does not exists')
+        # Construct response
+        err_code = aws_error_codes.AWS_IAM_ROLE_DOES_NOT_EXIST
+        resp = aws_error_codes.construct_response(err_code)
+        return False, resp
+
+    # Check response
+    sbool, scode = aws_common_utils.check_response_status(resp)
+    if not sbool:
+        logging.info(f'AWS API call to IAM delete roles failed with code: '
+                     f'{scode}')
+        raise aws_exceptions.AWS_API_CallFailed
+
+    err_code = aws_error_codes.AWS_NO_ERROR
+    resp = aws_error_codes.construct_response(err_code)
+    return True, resp
  
  
 def get_role_arn(role_name):
@@ -113,9 +151,6 @@ def get_role_arn(role_name):
                 - index 0 or role_arn: being the ARN name
                 - index 1 or full_response: being the full response
     '''
-    # Create a named tuple
-    role_arn = namedtuple('role_arn', 'full_response')
-
     # Connect to IAM and query the role
     iam_client=boto3.client('iam')
     resp = iam_client.get_role(RoleName=role_name) 
@@ -128,7 +163,7 @@ def get_role_arn(role_name):
         raise aws_exceptions.AWS_API_CallFailed
 
     # Split up and return the response
-    return role_arn(resp['Role']['Arn'], resp)
+    return resp['Role']['Arn'], resp
 
 if __name__ == '__main__':
 
@@ -139,8 +174,7 @@ if __name__ == '__main__':
     # print(resp.arn)
 
 
-    '''
-    role_name = 'gg_test1_role'
+    role_name = 'gg_test2_role'
     trust_policy_json = {
                             "Version":"2012-10-17",
                             "Statement":[
@@ -159,15 +193,19 @@ if __name__ == '__main__':
                    'Value': 'GG Test Project1'
                }
            ] 
-    arn, name, resp = create_role(role_name=role_name, 
+    '''
+    arn, resp = create_role(role_name=role_name, 
                                   trust_policy=trust_policy, path=path, 
                                   description=description, tags=tags)
     print(arn)
-    print(name)
     print(resp)
     '''
     
     roles_list, roles_dict, resp = list_roles()
     print(roles_list)
-    print(roles_dict)
+    # print(roles_dict)
+    # print(resp)
+
+    resp_code, resp = delete_role(role_name)
+    print(resp_code)
     print(resp)

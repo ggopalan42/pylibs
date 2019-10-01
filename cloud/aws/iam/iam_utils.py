@@ -4,8 +4,6 @@ import os
 import boto3
 import logging
 
-from collections import namedtuple
-
 # Local imports
 from pylibs.cloud.aws.config import aws_settings
 from pylibs.cloud.aws.config import aws_error_codes
@@ -30,10 +28,9 @@ def create_role(role_name, trust_policy, path='/', description='',
             - max_session_duration: In seconds. Default is 60 mins
             - tags: Tags in list of dict format
 
-        Returns: A named tuple of:
-           - Index 0 or role_arn: Role ARN
-           - Index 1 or full_response: The full response 
-                                       (minus the response meta data)
+        Returns:
+           - role_arn: Role ARN
+           - full_response: The full response (minus the response meta data)
     ''' 
     # Connect to IAM
     iam_client=boto3.client('iam')
@@ -147,9 +144,8 @@ def get_role_arn(role_name):
         Arguments:
             - role_name: Name of the role
         Returns:
-            - A named tuple with:
-                - index 0 or role_arn: being the ARN name
-                - index 1 or full_response: being the full response
+            - role_arn: being the ARN name
+            - full_response: being the full response
     '''
     # Connect to IAM and query the role
     iam_client=boto3.client('iam')

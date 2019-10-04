@@ -120,7 +120,7 @@ def delete_role(role_name):
     try:
         resp = iam_client.delete_role(RoleName = role_name)
     except iam_client.exceptions.NoSuchEntityException:
-        logging.error(f'IAM: Delete Role: {role_name} does not exists')
+        logging.error(f'IAM: Delete Role: {role_name} does not exist')
         # Construct response
         err_code = aws_error_codes.AWS_IAM_ROLE_DOES_NOT_EXIST
         resp = aws_error_codes.construct_response(err_code)

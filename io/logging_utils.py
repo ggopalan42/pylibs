@@ -21,3 +21,24 @@ def set_logging():
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s - %(name)s - '
                             '%(levelname)s - %(message)s')
+
+def log_if_false(status, message, log_as='error'):
+    ''' Log message if status is False '''
+    if not status:
+        if log_as == 'error':
+            logging.error(message)
+        elif log_as == 'warning':
+            logging.warning(message)
+        elif log_as == 'info':
+            logging.info(message)
+        else:
+            pass
+
+def log_if_true(status, message, log_as='info'):
+    ''' Log message if status is True '''
+    if not status:
+        if log_as == 'info':
+            logging.info(message)
+        else:
+            pass
+

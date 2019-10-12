@@ -129,3 +129,7 @@ agSpecifications=[
         },
     ],
 '''
+
+if __name__ == '__main__':
+    ec2_instances = get_all_instances_in_region()
+    print(ec2_instances)

@@ -37,6 +37,7 @@ def create_role(role_name, trust_policy, path='/', description='',
 
     # Create role
     try:
+        logging.info(f'IAM: Creating Role: {role_name}')
         resp = iam_client.create_role(
                    RoleName = role_name,
                    AssumeRolePolicyDocument = trust_policy,
@@ -161,6 +162,160 @@ def get_role_arn(role_name):
     # Split up and return the response
     return resp['Role']['Arn'], resp
 
+
+def create_policy(policy_name, policy_document, path='/', description=''):
+    ''' Create a policy named: policy_name with the specification
+        in: policy_document 
+
+        Arguments:
+            - policy_name: Name of the policy to create. A string
+            - policy_document: A JSON string that specified the policy.
+                               See below (or in tests) for an example
+            - path: The path where policy resides. can be any valid path.
+            - description: Description of the policy. A string
+
+        Returns:
+            - policy_arn: The ARN of the created policy. Null if failed
+            - full_response: The full response to the API call (minus metadata)
+    '''
+
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    try:
+        # Now create the policy
+        logging.info(f'Creating policy named {policy_name}')
+        resp = iam_client.create_policy(PolicyName=policy_name, 
+                                        PolicyDocument=policy_document, 
+                                        Path=path, Description=description) 
+        aws_common_utils.check_response_status(resp, check_failure=True)
+
+    except iam_client.exceptions.EntityAlreadyExistsException:
+        logging.error(f'IAM: Create Policy: {policy_name} already exists')
+        # Construct response
+        err_code = aws_error_codes.AWS_IAM_POLICY_ALREADY_EXISTS
+        resp = aws_error_codes.construct_response(err_code) 
+        return False, resp
+                   
+    # Return the created policy ARN and the full response
+    return resp['Policy']['Arn'], resp
+
+
+def delete_policy(policy_arn):
+    ''' Delete the policy specified by policy_arn
+
+        Note 1: Policy must be detached and all versions deleted before
+                the policy can be deleted
+        Note 2: Need to provide the policy arn here. You can get policy
+                arn from get_policy_arn call 
+    '''
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    try:
+        logging.info(f'Deleting policy ARN: {policy_arn}')
+        resp = iam_client.delete_policy(PolicyArn=policy_arn)
+        aws_common_utils.check_response_status(resp, check_failure=True)
+    except iam_client.exceptions.NoSuchEntityException:
+        logging.error(f'IAM: Delete Policy: {policy_arn} does not exist')
+        # Construct response
+        err_code = aws_error_codes.AWS_IAM_POLICY_DOES_NOT_EXIST
+        resp = aws_error_codes.construct_response(err_code) 
+        return False, resp
+
+    # If above call does not raise an exception, then call has succeded
+    # return OK
+
+    return True
+    
+
+def list_policies(policy_scope='Local', only_attached=True, path_prefix='/',
+                  policy_usage_filter='PermissionsPolicy'):
+    ''' Return a list of policies
+
+      Arguments:
+        - policy_scope: Choices are:
+                           All: All policies
+                           AWS: All AWS managed policies
+                           Local: All customer managed policies (default)
+        - only_attached: If True, return only attached policies. If False
+                         return all policies (True is default)
+        - path_prefix: The path prefix for filtering the results. Default is '/'
+        - policy_usage_filter: Choices are:
+                  - PermissionsPolicy: Filter only permissions policy (default) 
+                  - PermissionsBoundary: Filter only policies set for
+                                         permissions boundary
+
+      Returns:
+          - policy_names: A list of policy names
+          - policy_arns: A list of dicts with ploicy_name: policy_arn
+          - full_response: Full response of the API call
+    
+    #### Note: Pagination is not being used for results. As such, this
+               call can handle only upto 100 policies
+    '''
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    # Call List policies API
+    logging.info('Getting list of policies from AWS')
+    resp = iam_client.list_policies(Scope=policy_scope, 
+                                    OnlyAttached=only_attached,
+                                    PathPrefix=path_prefix,
+                                    PolicyUsageFilter=policy_usage_filter)
+    aws_common_utils.check_response_status(resp, check_failure=True)
+    
+    if resp['IsTruncated']:
+        logging.error('List policies returned truncated response. '
+                      'Returning all policies that were returned '
+                      'Time to switch to pagination . . . ')
+
+    # Get full list of policies
+    policies_list_full = resp['Policies']
+    # Then get other needed items
+    policies_names_list = [x['PolicyName'] for x in policies_list_full]
+    # Do a dict comprehension to return policy_name: policy_arn
+    policies_name_arn_dict = {x['PolicyName']: x['Arn'] for x in 
+                              policies_list_full}
+
+    return policies_names_list, policies_name_arn_dict, resp
+
+def get_policy_arn(policy_name):
+    ''' From policy name, get and retiurn the policy ARN '''
+
+    # First get all of the policies
+    policies_list, policies_arn_dict, _ =     \
+                  list_policies(policy_scope='All', only_attached=False,
+                                path_prefix='/',
+                                policy_usage_filter='PermissionsPolicy') 
+
+    # Check if policy name in the policies_list
+    if policy_name in policies_list:
+        # Return the ARN
+        return policies_arn_dict[policy_name]
+    # If name has not been found, then get a list with policy_usage_filter
+    # set to PermissionsBoundary
+    else:
+        policies_list, policies_arn_dict, _ =     \
+                  list_policies(policy_scope='All', only_attached=False,
+                                path_prefix='/',
+                                policy_usage_filter='PermissionsBoundary') 
+        # Check again
+        if policy_name in policies_list:
+            # Return the ARN
+            return policies_arn_dict[policy_name]
+        else:
+            return False
+    
+
+def attach_managed_policy_to_role():
+    raise aws_exceptions.AWS_NotImplementedError
+
+
+def attach_inline_policy_to_role():
+    raise aws_exceptions.AWS_NotImplementedError
+
+
 if __name__ == '__main__':
 
     import json
@@ -181,22 +336,47 @@ if __name__ == '__main__':
                              }
                          ]}
     trust_policy = json.dumps(trust_policy_json)
-    path = '/'
-    description = 'A test role for gg'
-    tags = [
+    trust_policy_path = '/'
+    trust_policy_description = 'A test role for gg'
+    trust_policy_tags = [
                {
                    'Key': 'Project',
                    'Value': 'GG Test Project1'
                }
            ] 
+
+    policy_name = 'gg_test2_policy'
+    policy_doc_json = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "dynamodb:PutItem",
+                        "dynamodb:GetItem",
+                        "dynamodb:Query",
+                        "dynamodb:UpdateItem"
+                    ],
+                    "Resource": "arn:aws:dynamodb:us-west-2:272566984931:table/gg_test1"
+                }
+            ]
+        }
+    policy_doc = json.dumps(policy_doc_json)
+    policy_path = '/'
+    policy_description = 'Dyn db allow policy'
+
+
     '''
     arn, resp = create_role(role_name=role_name, 
-                                  trust_policy=trust_policy, path=path, 
-                                  description=description, tags=tags)
+                                  trust_policy=trust_policy, 
+                                  path=trust_policy_path, 
+                                  description=trust_policy_description, 
+                                  tags=trust_policy_tags)
     print(arn)
     print(resp)
     '''
     
+    '''
     roles_list, roles_dict, resp = list_roles()
     print(roles_list)
     # print(roles_dict)
@@ -204,4 +384,26 @@ if __name__ == '__main__':
 
     resp_code, resp = delete_role(role_name)
     print(resp_code)
+    '''
+
+    policy_arn, full_resp  = create_policy(policy_name, policy_doc, 
+                                           path=policy_path, 
+                                           description=policy_description)
+    print(policy_arn)
+    print()
+    print(full_resp)
+
+    '''
+    policies_list, policies_arn_list, full_response  = list_policies(only_attached=False)
+    print(policies_list)
+    '''
+
+    '''
+    arn = get_policy_arn('gg_test2_policy') 
+    print(arn)
+    '''
+
+    '''
+    resp = delete_policy('arn:aws:iam::272566984931:policy/gg_test2_policy')
     print(resp)
+    '''

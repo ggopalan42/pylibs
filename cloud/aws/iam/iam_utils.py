@@ -237,7 +237,7 @@ def delete_policy(policy_name):
     # If above call does not raise an exception, then call has succeded
     # return OK
 
-    return True
+    return True, {}
     
 
 def list_policies(policy_scope='Local', only_attached=True, path_prefix='/',
@@ -350,13 +350,13 @@ def attach_managed_policy_to_role(role_name, policy_name):
     iam_client=boto3.client('iam')
 
     # Attach the policy to the role
-    logging.info(f'Attaching role: {role_name} to policy: {policy_name}')
+    logging.info(f'Attaching policy: {policy_name} to role: {role_name}')
     resp = iam_client.attach_role_policy(RoleName=role_name, 
                                          PolicyArn=managed_policy_arn)
     aws_common_utils.check_response_status(resp, check_failure=True)
 
     # If it falls through, then return success
-    return True
+    return True, {}
 
 
 def detach_managed_policy_from_role(role_name, policy_name):
@@ -367,6 +367,10 @@ def detach_managed_policy_from_role(role_name, policy_name):
             - policy_name: Managed policy name to attach to policy (not ARN)
 
         Returns: True if successful
+
+         Note: Sometime if the attach fails (like role does not exist)
+               a botocore exception is raised. A future improvement
+               will be to catch this and return an error code
     '''
     managed_policy_arn = make_managed_policy_arn(policy_name)
 
@@ -374,16 +378,51 @@ def detach_managed_policy_from_role(role_name, policy_name):
     iam_client=boto3.client('iam')
 
     # Detach the policy from the role
-    logging.info(f'Detaching role: {role_name} from policy: {policy_name}')
+    logging.info(f'Detaching policy: {policy_name} from role: {role_name}')
     resp = iam_client.detach_role_policy(RoleName=role_name,
                                          PolicyArn=managed_policy_arn)
     aws_common_utils.check_response_status(resp, check_failure=True)
 
     # If it falls through, then return success
-    return True
+    return True, {}
 
 
 def attach_inline_policy_to_role(role_name, policy_name, policy_document):
+    ''' Attach an inline policy to the role
+
+        Arguments:
+            - role_name: name of role, a string (not ARN)
+            - policy_name: name of policy, a string (not ARN)
+            - policy_document: A JSON of the ploic document.
+                               See below (or in tests) for example
+       Return:
+           - True if attach succeds
+
+             Note: Sometime if the attach fails (like role does not exist)
+                   a botocore exception is raised. A future improvement
+                   will be to catch this and return an error code
+    '''
+
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    logging.info(f'Attaching inline policy: {policy_name} to role: {role_name}')
+
+    resp = iam_client.put_role_policy(RoleName=role_name,
+                                      PolicyName=policy_name,
+                                      PolicyDocument=policy_document)
+
+    aws_common_utils.check_response_status(resp, check_failure=True)
+
+    # If it falls through, then return success
+    return True, {}
+
+
+def detach_inline_policy_to_role(role_name, policy_name):
+    ''' Detach an inline policy '''
+    # Note: Cant figure out how to do this from the boto3 docs.
+    #       Leaving it as not implemented as of now
+    logging.error('Detach inline policy from role not implemented')
     raise aws_exceptions.AWS_NotImplementedError
 
 
@@ -502,5 +541,17 @@ if __name__ == '__main__':
     ############## Detach managed Policy ######################
     resp = detach_managed_policy_from_role('gg_test1_role', 
                                                'AmazonDynamoDBFullAccess')
+    print(resp)
+    '''
+
+    '''
+    ############## Attach Inline Policy ######################
+    resp = attach_inline_policy_to_role(role_name, policy_name, policy_doc)
+    print(resp)
+    '''
+
+    '''
+    ############## Detach Inline Policy ######################
+    resp = detach_inline_policy_to_role(role_name, policy_name)
     print(resp)
     '''

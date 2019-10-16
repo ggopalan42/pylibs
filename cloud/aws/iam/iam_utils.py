@@ -13,7 +13,7 @@ from pylibs.cloud.aws.common import aws_common_utils
 # Constants
 
 # Set logging level
-# logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 def create_role(role_name, trust_policy, path='/', description='',
@@ -201,14 +201,25 @@ def create_policy(policy_name, policy_document, path='/', description=''):
     return resp['Policy']['Arn'], resp
 
 
-def delete_policy(policy_arn):
-    ''' Delete the policy specified by policy_arn
+def delete_policy(policy_name):
+    ''' Delete the policy specified by policy_name
 
         Note 1: Policy must be detached and all versions deleted before
                 the policy can be deleted
         Note 2: Need to provide the policy arn here. You can get policy
                 arn from get_policy_arn call 
     '''
+
+    # Get policy arn from policy name
+    policy_arn = get_policy_arn(policy_name)
+    # If policy name does not exist, return error
+    if not policy_arn:
+        logging.error(f'IAM: Delete Policy: {policy_name} does not exist')
+        # Construct response
+        err_code = aws_error_codes.AWS_IAM_POLICY_DOES_NOT_EXIST
+        resp = aws_error_codes.construct_response(err_code)
+        return False, resp
+
     # Connect to IAM
     iam_client=boto3.client('iam')
 
@@ -308,11 +319,71 @@ def get_policy_arn(policy_name):
             return False
     
 
-def attach_managed_policy_to_role():
-    raise aws_exceptions.AWS_NotImplementedError
+def make_managed_policy_arn(managed_policy_name):
+    ''' Given a managed policy name, make a policy arn
+
+        Note: This function is needed since boto3 API call for
+              list policies does not apper to return managed policies
+
+        - Arguments:
+            - managed_policy_name: Obvious
+
+        - Returns:
+            - mamanged_policy_arn: Obvious
+    '''
+
+    return f'arn:aws:iam::aws:policy/{managed_policy_name}'
 
 
-def attach_inline_policy_to_role():
+def attach_managed_policy_to_role(role_name, policy_name):
+    ''' Attach a managed policy to a role
+
+        Arguments:
+            - role_name: Role name to attach policy to (name, not ARN)
+            - policy_name: Managed policy name to attach to policy (not ARN)
+
+        Returns: True if successful
+    '''
+    managed_policy_arn = make_managed_policy_arn(policy_name)
+
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    # Attach the policy to the role
+    logging.info(f'Attaching role: {role_name} to policy: {policy_name}')
+    resp = iam_client.attach_role_policy(RoleName=role_name, 
+                                         PolicyArn=managed_policy_arn)
+    aws_common_utils.check_response_status(resp, check_failure=True)
+
+    # If it falls through, then return success
+    return True
+
+
+def detach_managed_policy_from_role(role_name, policy_name):
+    ''' Detach a managed policy from a role
+
+        Arguments:
+            - role_name: Role name to attach policy to (name, not ARN)
+            - policy_name: Managed policy name to attach to policy (not ARN)
+
+        Returns: True if successful
+    '''
+    managed_policy_arn = make_managed_policy_arn(policy_name)
+
+    # Connect to IAM
+    iam_client=boto3.client('iam')
+
+    # Detach the policy from the role
+    logging.info(f'Detaching role: {role_name} from policy: {policy_name}')
+    resp = iam_client.detach_role_policy(RoleName=role_name,
+                                         PolicyArn=managed_policy_arn)
+    aws_common_utils.check_response_status(resp, check_failure=True)
+
+    # If it falls through, then return success
+    return True
+
+
+def attach_inline_policy_to_role(role_name, policy_name, policy_document):
     raise aws_exceptions.AWS_NotImplementedError
 
 
@@ -325,7 +396,8 @@ if __name__ == '__main__':
     # print(resp.arn)
 
 
-    role_name = 'gg_test2_role'
+    ############## Define a test role ######################
+    role_name = 'gg_test1_role'
     trust_policy_json = {
                             "Version":"2012-10-17",
                             "Statement":[
@@ -345,7 +417,8 @@ if __name__ == '__main__':
                }
            ] 
 
-    policy_name = 'gg_test2_policy'
+    ############## Define a test policy ######################
+    policy_name = 'gg_test1_policy'
     policy_doc_json = {
             "Version": "2012-10-17",
             "Statement": [
@@ -367,6 +440,7 @@ if __name__ == '__main__':
 
 
     '''
+    ############## Create Role ######################
     arn, resp = create_role(role_name=role_name, 
                                   trust_policy=trust_policy, 
                                   path=trust_policy_path, 
@@ -377,33 +451,56 @@ if __name__ == '__main__':
     '''
     
     '''
+    ############## List Roles ######################
     roles_list, roles_dict, resp = list_roles()
     print(roles_list)
     # print(roles_dict)
     # print(resp)
 
+    ############## Delete Role ######################
     resp_code, resp = delete_role(role_name)
     print(resp_code)
     '''
 
+    '''
+    ############## Create Policy ######################
     policy_arn, full_resp  = create_policy(policy_name, policy_doc, 
                                            path=policy_path, 
                                            description=policy_description)
     print(policy_arn)
     print()
     print(full_resp)
+    '''
 
     '''
+    ############## List Policy ######################
     policies_list, policies_arn_list, full_response  = list_policies(only_attached=False)
     print(policies_list)
+    print(policies_arn_list)
     '''
 
     '''
-    arn = get_policy_arn('gg_test2_policy') 
+    ############## Get Policy ARN ######################
+    arn = get_policy_arn('AmazonDynamoDBFullAccess') 
     print(arn)
     '''
 
     '''
-    resp = delete_policy('arn:aws:iam::272566984931:policy/gg_test2_policy')
+    ############## Delete Policy ######################
+    resp = delete_policy('gg_test2_policy')
+    print(resp)
+    '''
+
+    '''
+    ############## Attach managed Policy ######################
+    resp = attach_managed_policy_to_role('gg_test1_role', 
+                                               'AmazonDynamoDBFullAccess')
+    print(resp)
+    '''
+
+    '''
+    ############## Detach managed Policy ######################
+    resp = detach_managed_policy_from_role('gg_test1_role', 
+                                               'AmazonDynamoDBFullAccess')
     print(resp)
     '''

@@ -1,8 +1,7 @@
 # pylibs
 Giri Gopalans Extensive Python Libraries
 
-This repo contains libraries developed by me for a wide variety of
-technologies. The main goal is reuse of code.
+This repo contains libraries developed by me for a wide variety of technologies.
 
 ## The Libraries
 - [Cloud](cloud):  Mostly AWS now, but hopefully others

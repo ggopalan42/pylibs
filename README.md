@@ -5,8 +5,8 @@ This repo contains libraries developed by me for a wide variety of
 technologies. The main goal is reuse of code.
 
 ## The Libraries
-- Cloud: [Mostly AWS now, but hopefully others](cloud)
-- Infrastructure: [Infra related like databases, docker, etc.](infra)
-- io: [Input/Output including, file utilities, logging, etc.](io)
-- ml: [Machine Learning including dataprocessing, various models, etc.](ml)
+- Cloud:            [Mostly AWS now, but hopefully others](cloud)
+- Infrastructure:   [Things like databases, docker, etc.](infra)
+- Input/Output:     [File utilities, logging, etc.](io)
+- Machine Learning: [Data pre-processing, various models and the like](ml)
 

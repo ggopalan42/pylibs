@@ -489,13 +489,13 @@ if __name__ == '__main__':
     print(resp)
     '''
     
-    '''
     ############## List Roles ######################
     roles_list, roles_dict, resp = list_roles()
     print(roles_list)
     # print(roles_dict)
     # print(resp)
 
+    '''
     ############## Delete Role ######################
     resp_code, resp = delete_role(role_name)
     print(resp_code)
